@@ -1,0 +1,98 @@
+Modeling Engine for Accelerometer Data
+========================================================
+Hassan 21-06-2014
+
+Executive Summary
+======================
+Activity data looks promising. Using the given parameters, a model was made to predict the outcome for a new user. Depending upon given factors the model will accurately judge whether the motion employed by the user is correct form or not. For this purpose the motion is divided into classes i.e class A, class B, and class C movements. Since the model has been trained on data from a variety of users, we can safely assume that the model will be able to help any and all users. Non linear techniques were applied using random forests and data was divided into 10-fold cross validaiton sets. The results came out to be 99% accurate and all the answers for test cases were satisfied 100% correctly. 
+
+Handling Missing values and establishing Variable Importance
+============================================================
+
+Data was read using the following lines of code. All the variables with missing and NA values were removed from the dataset. Data was cleaned using the following code and then written to a file for k -fold cross validation
+
+```{r}
+data<- read.csv(file = "pml-training.csv")
+y<- data[,!sapply(data,function(x) any(is.na(x)))]
+z<- y[, !sapply(y,function(x) any(x==""))]
+z<- z[,-1]
+head(z)
+```
+
+Variable importance can be established using the caret package. This can be done using the fscaret package as well, which makes it much more automatic and does not require the user to interfere. The following lines of R code were used to establish variable importance and to create a preliminary model. The processed data contained 60 variables in the database with 59 variables used as input.
+
+
+Reading Files and PreProcessing Data
+====================================
+
+Increased variance and reduced bias in the training data leads to more accurate and reliable models. In order to achieve such a training set, the pre-processed training file was divided into 10-fold cross validation and then split into separate files for further use. Writing the split of data in separate files was done so that the experiment could be reproduced easily. The following purpose written R code was used to achieve 10-fold cross validation. 
+
+
+```{r}
+##file options
+filename<- "~/Documents/Coursera/Data_science/Practical_machine_learning/assignment/pml-prepared-training.csv"
+header <- TRUE 
+sep <- "," #other options - " ", ",", ";", "\t"
+filename_t <- "t-pml_no" 
+filename_tr <- "pml_no"
+
+#K value - how many fold do you want
+K = 10
+
+#DO NOT MODIFY BELOW
+#----------------------------------------------------------------------------------------------------
+
+data<- read.csv(filename, header = header, sep = sep)
+
+##create cv combinations from package cvTools
+library(cvTools)
+ 
+#the number of rows to be split
+n = nrow(data)
+
+#storing the results for further use
+cv_index<- cvFolds(n, K, type = c("random"))
+
+#Copying cv_index values in to a matrix to avoid any problems with loops 
+mat<- matrix(data = c(cv_index[[5]], cv_index[[4]]), ncol = 2, nrow = n, dimnames = list(c(), c("df", "rownames")))
+
+#ordering mat according to K number - do we need to do this here?
+#mat<- mat[order(mat[,1], decreasing = FALSE),]
+
+##merge the required rows with the rownames matrix - this works
+data_x<- merge(cbind(data, row=row.names(data)), mat, by.x="row", by.y="rownames")
+
+#subset the data for all K folds into separate dataframes - and write into files
+for (i in 1:K){
+  
+  #saving the subsetted data into temp_df
+  test_df<- subset(data_x, data_x$df==i)
+  train_df<- subset(data_x, data_x$df!=i)
+  
+  #Omitting rownames and df labels
+  write_test_df<- subset(test_df, select = -c(row, df))
+  write_train_df<- subset(train_df, select = -c(row, df)) 
+    
+  #create unique filenames with every iteration
+  filename_test<- paste0(filename_t, i, ".txt")
+  filename_train<- paste0(filename_tr, i, ".txt")
+  
+  #write the subseted rows in test_df and train_df into different files
+  #write.table(write_test_df, file = filename_test, sep = "\t", row.names = FALSE, col.names = FALSE)
+  #write.table(write_train_df, file = filename_train, sep = "\t", row.names = FALSE, col.names = FALSE)
+}
+
+```
+
+Modeling Engine
+================
+
+With a variety of missing values, a good modeling choice would be Random Forests in R. Random Forests can be implemented by the randomForest package and as well as the caret package. It can accept values in numerics, characters, and factors. Therefore, all the date and timestamps were not pre-processed in the main database. In this study, the model was created using the caret package using the 'rf' parameter for the method function. The models were selected based on the best run of the 10-fold cross validation. Later on, internal validation with the 10-fold test sets were done which yielded excellent results. Model selection was done using RMSE values. External validation was done on the best model using the data provided by the instructors. All 20 answers came out to be correct. 
+
+
+Results and Conclusion
+======================
+
+The results show that many using robust techniques, many variables are not required to establish a non linear relationship between different variables of data. The resulting models are giving good predictions based on the test sets derived from 10-fold cross validation. Random forests are easy to implement, require less computing resources, and easy to interpret. They are an excellent substitute to linear modeling on a local computer. In conclusion, 59 variables out of the provided data were sufficient to model the data correctly, with 99% accuracy levels with 10-fold cross validation. 
+
+
